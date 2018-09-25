@@ -1,9 +1,11 @@
+import Move from './Move';
 
 export default class MinMaxPlayer {
 
     constructor() {
         this.endMoves = Array();
         this.calculations = 0;
+        this.currentPath = Array();
     }
 
     calculateMoves() {
@@ -23,6 +25,20 @@ export default class MinMaxPlayer {
         */
     }
 
+    calculateMoveTree() {
+        let emptyBoard = Array(9).fill(null);
+        this._calculateMovesForBoard(emptyBoard);
+    }
+
+    calculateNext(index) {
+
+        this.currentPath.push(index);
+
+        let currentNode = this.firstMove.findPath(this.currentPath);
+        let bestMove = currentNode.getNextBestMove(true);
+
+        this.currentPath.push(bestMove.selectedIndex);
+    }
 
     calculateMovesFindPath() {
 
@@ -41,7 +57,7 @@ export default class MinMaxPlayer {
 
         this.firstMove = new Move(-1);
         this._calculateMovesRecursive(board, 'O', this.firstMove);
-        this.endMoves.forEach(x => x.propagateBestScore(0));        
+        this.firstMove.propagateBestScore(0);        
     }
 
     _calculcateBestMoves(initalMove) {
@@ -53,7 +69,7 @@ export default class MinMaxPlayer {
             }
         }
     }
-
+ 
     _calculateMovesRecursive(board, previousPlayer, previousMove) {
 
         const currentPlayer = previousPlayer === 'O' ? 'X' : 'O';
@@ -61,14 +77,14 @@ export default class MinMaxPlayer {
         const winner = this._calculateWinner(board);
 
         if (winner) {
-            this.endMoves.push(new Move(null, previousMove, winner === 'X' ? 10 : -10))
+            previousMove.setScore(winner === 'X' ? 10 : -10);
             return; // Gewinner steht fest.
         }
 
         const unfilledSquares = this._calculateUnfilledSquares(board);
 
         if (unfilledSquares.length === 0) {
-            this.endMoves.push(new Move(null, previousMove, 0));
+            previousMove.setScore(0);
             return; // Unentschieden.
         }
 
@@ -95,7 +111,7 @@ export default class MinMaxPlayer {
     }
 
     _calculateWinner(board) {
-
+ 
         // Zeilen
         if (this._calculateWinnerForIndices(board, 0, 1, 2)) {
             return board[0];
@@ -115,11 +131,11 @@ export default class MinMaxPlayer {
         }
 
         if (this._calculateWinnerForIndices(board, 1, 4, 7)) {
-            return board[3];
+            return board[1];
         }
         
         if (this._calculateWinnerForIndices(board, 2, 5, 8)) {
-            return board[6];
+            return board[2];
         }
         
         // Diagonale
@@ -128,7 +144,7 @@ export default class MinMaxPlayer {
         }
 
         if (this._calculateWinnerForIndices(board, 2, 4, 6)) {
-            return board[3];
+            return board[2];
         }
 
         return null;
@@ -136,79 +152,5 @@ export default class MinMaxPlayer {
 
     _calculateWinnerForIndices(board, index1, index2, index3) {
         return board[index1] === board[index2] && board[index2] === board[index3];
-    }
-}
-
-export class Move {
-
-    constructor(selectedIndex, previousMove, score) {
-        this.selectedIndex = selectedIndex;
-        this.previousMove = previousMove;
-        this.score = score === undefined ? 0 : score;
-        this.nextMoves = Array();
-
-        if (this.previousMove) {
-            this.previousMove.addNextMove(this);
-        }
-    }
- 
-    addNextMove = (move) => {
-        this.nextMoves.push(move);
-    }
-
-    getNextBestMove = (isLowestWanted) => {
-
-        if (this.nextMoves.length === 0)
-        {
-            return null;
-        }        
-
-        let bestMove;
-        let bestScore = isLowestWanted ? 1000 : -1000;
-
-        this.nextMoves.forEach(move => {
-
-            if (isLowestWanted && move.score < bestScore) {
-                bestMove = move;
-                bestScore = move.score;
-            }
-
-            if (!isLowestWanted && move.score > bestScore) {
-                bestMove = move;
-                bestScore = move.score;
-            }
-        });
-
-        return bestMove;
-    }
-
-    propagateBestScore = (verbose) => {
-
-        if (this.nextMoves.length === 0) {
-            return this.score;
-        }
-
-        let sumOfScores = 0;
-        this.nextMoves.forEach(move => {
-            sumOfScores += move.propagateBestScore(verbose);
-        });
-
-        this.score = sumOfScores;
-        return sumOfScores;
-    }
-
-    findPath = (indices) => {
-
-        if (indices.length === 0)
-        {
-            return this;
-        }
-
-        const next = this.nextMoves.find(x => x.selectedIndex === indices[0]);
-        if (next === undefined) {
-            console.log(`no entry for index ${indices[0]}`);
-        }
-
-        return next.findPath(indices.slice(1));
     }
 }
